@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sample
+  template:
+    metadata:
+      labels:
+        app: sample
+    spec:
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "5"
+      terminationGracePeriodSeconds: 24
+      containers:
+      - image: 395281289824.dkr.ecr.ap-northeast-2.amazonaws.com/sample:1.0
+        name: sample
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/busybox
+              - sleep
+              - "4"
+        env:
+        - name: deploy
+          value: "38"
+        ports:
+        - containerPort: 8080
+          name: sample
+        resources:
+          requests:
+            memory: "13Mi"   
+            cpu: "150m"       
+          limits:
+            memory: "13Mi"   
+            cpu: "150m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 5
+          successThreshold: 2  
+          failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+  labels:
+    app: my-sample-svc
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: sample
